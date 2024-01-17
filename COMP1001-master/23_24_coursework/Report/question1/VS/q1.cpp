@@ -91,28 +91,59 @@ void initialize() {
 
 
 
-void routine1(float alpha, float beta) {
+void routine1(float alpha, float beta, float y[], float z[]) {
+    const int M = // specify the size of your array;
+    const int simdSize = 8; // single-precision floats and AVX2 with 8 floats per vector
 
-    unsigned int i;
+    // Ensure that the size of the array is a multiple of the SIMD size
+    int numVectors = M / simdSize;
 
+    // Perform the computation using AVX2 intrinsics
+    __m256 alphaVec = _mm256_set1_ps(alpha);
+    __m256 betaVec = _mm256_set1_ps(beta);
 
-    for (i = 0; i < M; i++)
-        y[i] = alpha * y[i] + beta * z[i];
+    for (int i = 0; i < numVectors; ++i) {
+        // Load data into vectors
+        __m256 yVec = _mm256_load_ps(&y[i * simdSize]);
+        __m256 zVec = _mm256_load_ps(&z[i * simdSize]);
 
+        // Perform the computation
+        yVec = _mm256_add_ps(_mm256_mul_ps(alphaVec, yVec), _mm256_mul_ps(betaVec, zVec));
+
+        // Store the result back to y
+        _mm256_store_ps(&y[i * simdSize], yVec);
+        cout << "y[" << i << "] = " << y[i] << endl;
+    }
+    
 }
 
-void routine2(float alpha, float beta) {
+void routine2(float alpha, float beta, float A[N][N],float x[],float w[]) {
+    const int N = /* specify the size of your arrays */;
+    const int simdSize = 4; //single-precision floats and SSE with 4 floats per vector
 
-    unsigned int i, j;
+    // Ensure that the size of the arrays is a multiple of the SIMD size
+    int numVectors = N / simdSize;
 
+    __m128 alphaVec = _mm_set1_ps(alpha);
+    __m128 betaVec = _mm_set1_ps(beta);
 
-    for (i = 0; i < N; i++)
-        for (j = 0; j < N; j++)
-            w[i] = w[i] - beta + alpha * A[i][j] * x[j];
+    for (int i = 0; i < N; ++i) {
+        // Load w[i] and x[j] into vectors
+        __m128 wVec = _mm_set1_ps(w[i]);
 
+        for (int j = 0; j < numVectors; ++j) {
+            __m128 xVec = _mm_load_ps(&x[j * simdSize]);
+            __m128 AVec = _mm_load_ps(&A[i][j * simdSize]);
 
+            
+            wVec = _mm_sub_ps(_mm_sub_ps(wVec, betaVec),
+                _mm_mul_ps(alphaVec, _mm_mul_ps(AVec, xVec)));
+        }
+
+        // Store the result back to w
+        w[i] = _mm_cvtss_f32(wVec);
+        cout << "w[" << i << "] = " << w[i] << endl;
+    }
 }
-
-
 
 
